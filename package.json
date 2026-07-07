@@ -1,0 +1,45 @@
+{
+  "name": "rn-app-restart",
+  "version": "0.1.0",
+  "description": "Restart your React Native app natively — true cold restart on Android, dev-menu-grade reload on iOS with a launch-screen overlay. New Architecture (TurboModule) and old architecture supported.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "jest",
+    "RNAppRestart.podspec",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "react-native",
+    "restart",
+    "reload",
+    "rtl",
+    "i18n",
+    "turbomodule",
+    "new-architecture"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ibrahimfathi96/rn-app-restart.git"
+  },
+  "author": "Ibrahim Fathi <ibrahem@applai-team.com> (https://ibrahimfathi.dev)",
+  "license": "MIT",
+  "homepage": "https://github.com/Ibrahimfathi96/rn-app-restart#readme",
+  "codegenConfig": {
+    "name": "RNAppRestartSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.rnapprestart"
+    }
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}
