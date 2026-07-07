@@ -1,12 +1,14 @@
 <div align="center">
 
-[![Stand With Palestine](https://raw.githubusercontent.com/TheBSD/StandWithPalestine/main/banner-no-action.svg)](https://thebsd.github.io/StandWithPalestine)
-
 # rn-app-restart
 
 **Restart your React Native app natively — for real.**
 
-[![StandWithPalestine](https://raw.githubusercontent.com/TheBSD/StandWithPalestine/main/badges/StandWithPalestine.svg)](https://thebsd.github.io/StandWithPalestine)
+<p>
+  <img src="https://res.cloudinary.com/doehu91ch/image/upload/v1783385542/uczjqseigongdph3ffd0.jpg" alt="I stand with Palestine" width="140" />
+  <img src="https://res.cloudinary.com/doehu91ch/image/upload/v1783385542/ctppkd9anwhrxk7mrszf.jpg" alt="Free Palestine" width="140" />
+</p>
+
 ![Platforms](https://img.shields.io/badge/platforms-android%20%7C%20ios-lightgrey.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Architectures](https://img.shields.io/badge/RN-old%20%2B%20new%20architecture-blueviolet.svg)
@@ -147,7 +149,3 @@ No `newArchEnabled` flags to set — the module follows whatever the host app us
 ## License
 
 [MIT](LICENSE) © [Ibrahim Fathi](https://ibrahimfathi.dev)
-
-## 🇵🇸 Free Palestine
-
-This project stands with the Palestinian people against the occupation, apartheid, and the ongoing genocide. If this library is useful to you, consider donating to [Palestine Children's Relief Fund](https://www.pcrf.net/) or [UNRWA](https://donate.unrwa.org/).
