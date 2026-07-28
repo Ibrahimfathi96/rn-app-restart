@@ -24,7 +24,7 @@ The most common use case: applying an **RTL ⇄ LTR language switch**, which Rea
 
 ## Requirements
 
-- React Native **≥ 0.74** (needs `BaseReactPackage`; tested on 0.79 old arch and 0.86 New Architecture/bridgeless)
+- React Native **≥ 0.74** (needs `BaseReactPackage`). Verified end-to-end on **RN 0.86** (New Architecture / bridgeless), iOS + Android; both architectures compile-verified on RN 0.79 and 0.86
 - iOS 13+, Android minSdk 24+ (follows your app's values when higher)
 - Old and New Architecture both supported — nothing to configure, the module follows the host app
 - Expo: dev client / prebuild / EAS / bare ✅ — Expo Go ❌ (see [Expo](#expo))
@@ -35,10 +35,10 @@ The most common use case: applying an **RTL ⇄ LTR language switch**, which Rea
 
 ```sh
 # yarn
-yarn add github:Ibrahimfathi96/rn-app-restart
+yarn add rn-app-restart
 
 # npm
-npm install github:Ibrahimfathi96/rn-app-restart
+npm install rn-app-restart
 ```
 
 **2. iOS — install pods**
@@ -51,15 +51,13 @@ cd ios && pod install
 
 That's it — autolinking registers the module on both platforms. No manual `MainApplication` edits, no config plugin, no manifest changes.
 
-> Published npm package coming once it's battle-tested — the GitHub install works today.
-
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 | --- | --- |
 | `[rn-app-restart] Native module not found…` | The app binary predates the install — rerun `pod install` and **rebuild both apps**. If you're in **Expo Go**: custom native modules can't run there, use a dev build (in dev the call falls back to a JS reload so you can keep working). |
 | Jest tests crash on import | Add the one-line mock — see [Testing](#testing-jest). |
-| iOS: launch screen overlay stays ~8 s before fading | The reload-complete signal didn't fire on your RN version. The failsafe dismissed it (you're never trapped) — please [open an issue](https://github.com/Ibrahimfathi96/rn-app-restart/issues) with your RN version and architecture. |
+| iOS: launch screen overlay stays ~8 s before fading | Neither bundle-loaded signal fired on your RN version, so the failsafe dismissed it (you're never trapped). Expected dismissal is ~0.5 s. Please [open an issue](https://github.com/Ibrahimfathi96/rn-app-restart/issues) with your RN version and architecture. |
 | iOS: no overlay at all during restart | Your app has no `UILaunchStoryboardName` in Info.plist (no launch storyboard) — the reload still works, just uncovered. Add a launch screen if you want the covered transition. |
 | Android: app closes but doesn't reopen | The launcher couldn't resolve your launch intent — check your `MainActivity` has the `MAIN`/`LAUNCHER` intent filter (standard in every RN template). |
 
@@ -132,7 +130,7 @@ jest.mock('rn-app-restart', () => require('rn-app-restart/jest/mock'));
 | **Android** | Classic `ReactContextBaseJavaModule` | Codegen spec (`NativeRNAppRestartSpec`) |
 | **iOS** | `RCT_EXPORT_MODULE` / `RCT_EXPORT_METHOD` | Same class + `getTurboModule` under `RCT_NEW_ARCH_ENABLED` |
 
-No `newArchEnabled` flags to set — the module follows whatever the host app uses. Tested on RN 0.79 (old arch) and RN 0.86 (New Architecture, bridgeless).
+No `newArchEnabled` flags to set — the module follows whatever the host app uses. Runtime-verified on RN 0.86 (New Architecture / bridgeless) on both platforms; the old-architecture paths are compile-verified on RN 0.79 and 0.86.
 
 ## Why not react-native-restart?
 
@@ -144,7 +142,7 @@ No `newArchEnabled` flags to set — the module follows whatever the host app us
 ## How it works
 
 - **Android**: `packageManager.getLaunchIntentForPackage()` + `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK` → `startActivity` → `finishAffinity()` → process exit. The OS relaunches the app fresh.
-- **iOS**: `RCTTriggerReloadCommandListeners()` — the supported, public reload entry point that tears down and recreates the React host and all surfaces. The launch-screen overlay window sits at `UIWindowLevelAlert + 1` and dismisses on `RCTJavaScriptDidLoadNotification` (posted on both architectures) with a timeout fallback.
+- **iOS**: `RCTTriggerReloadCommandListeners()` — the supported, public reload entry point that tears down and recreates the React host and all surfaces. The launch-screen overlay window sits at `UIWindowLevelAlert + 1` and dismisses on whichever bundle-loaded signal the host runtime posts — `RCTJavaScriptDidLoadNotification` on the bridge, `RCTInstanceDidLoadBundle` on bridgeless — with an 8 s timeout fallback. Both are needed: the bridge notification is **not** posted in bridgeless mode, which is the default on modern React Native.
 
 ## License
 

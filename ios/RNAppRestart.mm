@@ -13,7 +13,7 @@
 // restart reads as a genuine relaunch. Held statically: the module instance is
 // torn down by the reload itself, but the overlay must outlive it.
 static UIWindow *gRNAppRestartOverlay = nil;
-static id gRNAppRestartLoadObserver = nil;
+static NSMutableArray *gRNAppRestartLoadObservers = nil;
 
 // The overlay must never be able to permanently cover the app: it is dismissed
 // when the new JS bundle finishes loading, with a hard timeout fallback.
@@ -24,10 +24,10 @@ static const NSTimeInterval kRNAppRestartOverlayGraceSeconds = 0.3;
 static void RNAppRestartHideOverlay(void)
 {
   RCTExecuteOnMainQueue(^{
-    if (gRNAppRestartLoadObserver != nil) {
-      [[NSNotificationCenter defaultCenter] removeObserver:gRNAppRestartLoadObserver];
-      gRNAppRestartLoadObserver = nil;
+    for (id token in gRNAppRestartLoadObservers) {
+      [[NSNotificationCenter defaultCenter] removeObserver:token];
     }
+    gRNAppRestartLoadObservers = nil;
     UIWindow *overlay = gRNAppRestartOverlay;
     if (overlay == nil) {
       return;
@@ -71,19 +71,33 @@ static void RNAppRestartShowOverlay(void)
   overlay.hidden = NO;
   gRNAppRestartOverlay = overlay;
 
-  // Dismiss when the fresh JS bundle has loaded (posted on both architectures)…
-  gRNAppRestartLoadObserver = [[NSNotificationCenter defaultCenter]
-      addObserverForName:RCTJavaScriptDidLoadNotification
-                  object:nil
-                   queue:[NSOperationQueue mainQueue]
-              usingBlock:^(__unused NSNotification *note) {
-                dispatch_after(
-                    dispatch_time(DISPATCH_TIME_NOW,
-                                  (int64_t)(kRNAppRestartOverlayGraceSeconds * NSEC_PER_SEC)),
-                    dispatch_get_main_queue(), ^{
-                      RNAppRestartHideOverlay();
-                    });
-              }];
+  // Dismiss when the fresh JS bundle has loaded. The signal differs by runtime:
+  //   • bridge (old architecture): RCTJavaScriptDidLoadNotification
+  //   • bridgeless (New Architecture): "RCTInstanceDidLoadBundle", posted by
+  //     RCTInstance as a bare string with no exported constant.
+  // Both must be observed. RN's own RCTDevLoadingView/RCTDevSettings watch the
+  // same pair for the same reason. Measured on RN 0.86 bridgeless: the bridge
+  // notification never fires, so observing it alone left the overlay up for the
+  // full failsafe (8.0s) on every single restart.
+  NSArray *loadSignals = @[ RCTJavaScriptDidLoadNotification, @"RCTInstanceDidLoadBundle" ];
+  gRNAppRestartLoadObservers = [NSMutableArray arrayWithCapacity:loadSignals.count];
+  for (NSNotificationName signal in loadSignals) {
+    id token = [[NSNotificationCenter defaultCenter]
+        addObserverForName:signal
+                    object:nil
+                     queue:[NSOperationQueue mainQueue]
+                usingBlock:^(__unused NSNotification *note) {
+                  // Hide is idempotent, so whichever signal lands first wins and
+                  // a later duplicate is a no-op.
+                  dispatch_after(
+                      dispatch_time(DISPATCH_TIME_NOW,
+                                    (int64_t)(kRNAppRestartOverlayGraceSeconds * NSEC_PER_SEC)),
+                      dispatch_get_main_queue(), ^{
+                        RNAppRestartHideOverlay();
+                      });
+                }];
+    [gRNAppRestartLoadObservers addObject:token];
+  }
 
   // …and unconditionally after the timeout, so a failed load can't trap the user.
   dispatch_after(

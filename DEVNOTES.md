@@ -68,10 +68,16 @@ android/src/oldarch/...    abstract RNAppRestartSpec : ReactContextBaseJavaModul
 | Package source complete | ✅ (all files above) |
 | **Podium in-app twin — iOS** | ✅ **VERIFIED WORKING on device/sim** (2026-07-07): full app behaves as if the package exists; language switch restarts correctly |
 | **Podium in-app twin — Android** | 🔜 testing next (2026-07-08) — cold-restart path is the thing to verify |
-| Package compiled inside a host app | ❌ not yet — a library only compiles in a host; see test plan |
-| Old-arch verification (0.79 project) | ❌ not yet |
-| GitHub repo | ❌ not created; repo URL in package.json/podspec/README is a **placeholder** (`github.com/Ibrahimfathi96/rn-app-restart`) — confirm the username |
-| npm publish | ❌ deliberately later, after all projects prove it; check the name `rn-app-restart` is free first |
+| **Package compiled — Android, new arch** | ✅ **2026-07-28**, riya (RN 0.79, `newArchEnabled=true`): `:rn-app-restart:assembleDebug` BUILD SUCCESSFUL. Codegen ran (`NativeRNAppRestartSpec.java` generated + compiled), `IS_NEW_ARCHITECTURE_ENABLED=true` |
+| **Package compiled — Android, old arch** | ✅ **2026-07-28**, same host via `-PnewArchEnabled=false`: BUILD SUCCESSFUL, `IS_NEW_ARCHITECTURE_ENABLED=false`, `oldarch` `RNAppRestartSpec.class` compiled. **No host mutation needed** — the gradle property override drives the source-set split directly. This is the cheap repeatable old-arch check |
+| **Package compiled — iOS, new arch** | ✅ **2026-07-28**, riya Pods target `RNAppRestart`, `-DRCT_NEW_ARCH_ENABLED=1`: BUILD SUCCEEDED, `RNAppRestart.o` produced — with `<NativeRNAppRestartSpec>` conformance, so the compiler verified the impl matches the JS spec |
+| TS strict typecheck | ✅ 2026-07-28 against RN 0.86.2 types, `tsc --strict` clean |
+| **Runtime — Android, RN 0.86 new arch** | ✅ **2026-07-28**, throwaway harness on Pixel 9 Pro AVD. True cold restart (pid 6359→6516→6639), RTL applies in **ONE** restart both directions, `RCTI18nUtil_forceRTL` durable on disk immediately after. The `-`/`--` text glitch did **not** reproduce |
+| **Runtime — iOS, RN 0.86 bridgeless** | ✅ **2026-07-28** after fixing the overlay bug below. Overlay appears instantly, dismisses ~0.5 s, fresh JS context each time |
+| **🐞 BUG FOUND + FIXED — iOS overlay hung 8 s on every restart** | `RCTJavaScriptDidLoadNotification` is a **bridge-era** notification and is **never posted in bridgeless mode**. The overlay was therefore dismissed by the 8 s failsafe on *every* restart on modern RN — measured across 3 consecutive runs at 8.04 / 8.02 / 8.01 s, with the JS-load observer never firing. §6's prediction was exactly right. **Fix:** also observe `"RCTInstanceDidLoadBundle"` (posted by `RCTInstance.mm`; a bare string with no exported constant — RN's own `RCTDevLoadingView`/`RCTDevSettings` observe the same pair). After the fix: signal fires at 0.197 / 0.189 / 0.191 s → ~0.5 s dismissal incl. grace. **16× improvement, and the headline iOS feature now actually works as advertised.** Caught only because the overlay was instrumented with `NSLog` + `log show` — screenshot timing was too coarse to tell 8 s-failsafe from slow-bundle-load, and initially gave the wrong answer |
+| GitHub repo | ✅ created and pushed (`origin/main` @ 46616ed). Username `Ibrahimfathi96` confirmed correct |
+| npm name `rn-app-restart` | ✅ unclaimed (registry 404 on 2026-07-28) |
+| npm publish | 🔜 pending runtime verification + `npm login` |
 
 **The Podium in-app twin** (same logic, different names) lives in the Podium repo: `specs/NativeAppRestart.ts`, `android/.../AppRestartModule.kt` + `AppRestartPackage.kt` + MainApplication registration, `ios/Podium/RCTNativeAppRestart.h/.mm` + pbxproj entries + `codegenConfig` (with `ios.modulesProvider`). It stays until the package is proven, then Podium migrates (see §7).
 
@@ -93,11 +99,14 @@ cd ios && pod install
 
 Matrix (each row = install, build, tap a restart trigger, verify):
 
+> ⚠️ **Corrected 2026-07-28:** the old "riya/niyak = old arch" assumption was wrong. **Every project in the workspace is `newArchEnabled=true`** (riya, niyak, Jeyad @0.79; HM-tasks2, Liana @0.83; Sahwa, template @0.85; Podium @0.86) — RN's template has defaulted to new arch since 0.76. There is no naturally-old-arch host. Old arch is instead covered by the gradle property override below, which needs no host changes at all.
+
 | Project | RN | Arch | Verifies |
 | --- | --- | --- | --- |
 | Podium | 0.86 | New (bridgeless) | TurboModule path, iOS overlay + dismissal timing, Android cold restart, coexistence with the in-app twin (different names — must not clash) |
-| riya or niyak | 0.79 | Old | Old-arch fallback in the spec file, `oldarch` source set, `RCT_EXPORT_METHOD` path, BaseReactPackage on 0.79 |
-| HM-tasks2 or Liana | 0.83 | check project | mid-version sanity |
+| riya | 0.79 | New | Compile floor: oldest supported RN. ✅ done 2026-07-28 (Android + iOS pod target) |
+| riya | 0.79 | Old (forced) | `cd android && ./gradlew :rn-app-restart:assembleDebug -PnewArchEnabled=false` — `oldarch` source set + `ReactContextBaseJavaModule` + BaseReactPackage. ✅ done 2026-07-28. iOS equivalent: same target with `RCT_NEW_ARCH_ENABLED` dropped from `OTHER_CPLUSPLUSFLAGS` |
+| HM-tasks2 or Liana | 0.83 | New | mid-version sanity |
 
 Per-platform checks:
 - **Android**: app fully relaunches (process id changes); RTL flip applies; back stack is clean (no old activity behind); works from a background→foreground state; release build too (not just debug).
