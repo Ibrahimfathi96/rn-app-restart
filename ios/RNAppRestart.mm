@@ -48,7 +48,7 @@ static void RNAppRestartShowOverlay(void)
   NSString *storyboardName =
       [[NSBundle mainBundle] objectForInfoDictionaryKey:@"UILaunchStoryboardName"];
   if (storyboardName.length == 0) {
-    return; // No launch screen configured — reload without an overlay.
+    return; // No launch screen configured, so reload without an overlay.
   }
 
   UIViewController *launchVC = nil;
@@ -71,14 +71,16 @@ static void RNAppRestartShowOverlay(void)
   overlay.hidden = NO;
   gRNAppRestartOverlay = overlay;
 
-  // Dismiss when the fresh JS bundle has loaded. The signal differs by runtime:
-  //   • bridge (old architecture): RCTJavaScriptDidLoadNotification
-  //   • bridgeless (New Architecture): "RCTInstanceDidLoadBundle", posted by
-  //     RCTInstance as a bare string with no exported constant.
-  // Both must be observed. RN's own RCTDevLoadingView/RCTDevSettings watch the
-  // same pair for the same reason. Measured on RN 0.86 bridgeless: the bridge
-  // notification never fires, so observing it alone left the overlay up for the
-  // full failsafe (8.0s) on every single restart.
+  // Dismiss when the fresh JS bundle has loaded. Which signal marks that
+  // depends on the runtime:
+  //   - bridge (old architecture) posts RCTJavaScriptDidLoadNotification
+  //   - bridgeless (New Architecture) posts "RCTInstanceDidLoadBundle", sent by
+  //     RCTInstance as a bare string with no exported constant
+  // Both are observed because neither runtime posts the other's signal. On
+  // bridgeless, which is the default on modern RN, watching only the bridge
+  // notification means nothing ever fires and the overlay stays up for the full
+  // 8s failsafe on every restart. RN's own RCTDevLoadingView and RCTDevSettings
+  // watch the same pair for the same reason.
   NSArray *loadSignals = @[ RCTJavaScriptDidLoadNotification, @"RCTInstanceDidLoadBundle" ];
   gRNAppRestartLoadObservers = [NSMutableArray arrayWithCapacity:loadSignals.count];
   for (NSNotificationName signal in loadSignals) {

@@ -1,7 +1,7 @@
 {
   "name": "rn-app-restart",
-  "version": "0.1.0",
-  "description": "Restart your React Native app natively — true cold restart on Android, dev-menu-grade reload on iOS with a launch-screen overlay. New Architecture (TurboModule) and old architecture supported.",
+  "version": "1.0.0",
+  "description": "Restart your React Native app natively. True cold restart on Android, dev-menu-grade reload on iOS with a launch-screen overlay. Supports both the New Architecture (TurboModule) and the old architecture.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "react-native": "src/index.ts",
